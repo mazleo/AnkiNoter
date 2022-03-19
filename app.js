@@ -1,7 +1,7 @@
 
 const fs = require('fs/promises');
-const { exec } = require('child_process');
-const { argv } = require('process');
+const exec = require('await-exec');
+const { argv, exit } = require('process');
 
 const basic_note_name = "KaTeX and Markdown Basic"
 const cloze_note_name = "KaTeX and Markdown Cloze"
@@ -18,7 +18,7 @@ const getRawMarkdownNotes = async (filepath) => {
 };
 
 const splitRawNotesToCards = (rawNotes) => {
-    const cardRegex = /-\s.*\n(\s{4}-\s.*\n*)+/g
+    const cardRegex = /-\s.*\n(\s{4}-\s.*)+\s*/gm
     const cardsArray = rawNotes.match(cardRegex);
 
     return cardsArray;
@@ -46,17 +46,24 @@ const parseRawCard = (rawCard) => {
     return parsedCard;
 };
 
-const parseRawNotes = (rawNotes) => {
+const parseRawNotesIntoPages = (rawNotes) => {
     log('info', `Parsing notes...`);
     const cardsArray = splitRawNotesToCards(rawNotes);
-    let parsedNotes = [];
 
+    let parsedNotesPages = [];
+    let parsedNotes = [];
+    let page = 0;
+    let maxPerPage = 5;
     for (var rawCard of cardsArray) {
         var parsedCard = parseRawCard(rawCard);
         parsedNotes.push(parsedCard);
+        if (parsedNotes.length == maxPerPage) {
+            parsedNotesPages.push(parsedNotes);
+            parsedNotes = [];
+        }
     }
 
-    return parsedNotes;
+    return parsedNotesPages;
 }
 
 const createBasicFields = (question, answers) => {
@@ -79,7 +86,6 @@ const createAnkiFields = (note) => {
 };
 
 const convertNotesToAnki = (deckname, notes) => {
-    log('info', 'Converting parsed notes into an AnkiConnect valid JSON value...');
     let ankiNotes = [];
 
     for (var note of notes) {
@@ -109,17 +115,28 @@ const createRequestData = (deckname, notes) => {
     return JSON.stringify(requestObject);
 }
 
-const postNotes = async (deckname) => {
-    const rawNotes = await getRawMarkdownNotes('md-notes/ctci-part-1.md');
-    const notes = parseRawNotes(rawNotes);
-    const requestData = createRequestData(deckname, notes);
-
-    log('info', 'Creating notes in Anki...');
-    const curlRequest = `echo ${requestData} | curl -sX POST -d @- "localhost:8765"`;
-    exec(curlRequest, (error, stdout, stderr) => {
-        if (stdout) console.log(stdout);
-        if (stderr) console.log(stderr);
-    });
+const convertRawNotesToUnix = async (filename) => {
+    log('info', `Converting ${filename} to Unix file format...`)
+    const conversionCommand= `dos2unix -u md-notes/${filename}`
+    let { stdout, stderr } = await exec(conversionCommand);
 };
 
-postNotes(argv[2]);
+const postNotes = async (filename, deckname) => {
+    await convertRawNotesToUnix(filename);
+    const rawNotes = await getRawMarkdownNotes(`md-notes/${filename}`);
+    const notesPages = parseRawNotesIntoPages(rawNotes);
+    log('info', `Number of note pages: ${notesPages.length}`);
+    let page = 0;
+    for (var notes of notesPages) {
+        const requestData = createRequestData(deckname, notes);
+
+        log('info', `Creating page ${page} notes in Anki...`);
+        const curlRequest = `echo ${requestData} | curl -sX POST -d @- "localhost:8765"`;
+        let { stdout, stderr } = await exec(curlRequest);
+        if (stderr) console.log(stderr);
+        if (stdout) console.log(stdout);
+        page++;
+    }
+}
+
+postNotes(argv[2], argv[3]);
