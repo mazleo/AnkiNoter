@@ -3,8 +3,8 @@ const fs = require('fs/promises');
 const exec = require('await-exec');
 const { argv, exit } = require('process');
 
-const basic_note_name = "KaTeX and Markdown Basic"
-const cloze_note_name = "KaTeX and Markdown Cloze"
+const basic_note_name = "Basic"
+const cloze_note_name = "Cloze"
 
 const log = (type, message) => {
     console.log(`[${type}] ${message}`);
@@ -31,7 +31,8 @@ const parseRawCard = (rawCard) => {
         .split('\n')
         .filter(bullet => bullet != '')
         .map(bullet => bullet.trim())
-        .map(bullet => bullet.slice(2));
+        .map(bullet => bullet.slice(2))
+        .map(bullet => bullet.replaceAll(/["“”‘’”]/g, '\''));
 
     const cardType = getCardType(rawCardBullets);
     const question = rawCardBullets[0];
@@ -62,6 +63,7 @@ const parseRawNotesIntoPages = (rawNotes) => {
             parsedNotes = [];
         }
     }
+    if (parsedNotesPages.length == 0 && parsedNotes) parsedNotesPages.push(parsedNotes);
 
     return parsedNotesPages;
 }
@@ -75,7 +77,7 @@ const createBasicFields = (question, answers) => {
 
 const createClozeFields = (question, answers) => {
     return {
-        Text: `**${question}**\n${answers.filter(bullet => bullet != '').map(bullet => `- ${bullet}`).join('\n')}`
+        Text: `<h3>${question}</h3>\n<ul>${answers.filter(bullet => bullet != '').map(bullet => `<li>${bullet}</li>`).join('\n')}</ul>`
     };
 };
 
