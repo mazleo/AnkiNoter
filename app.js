@@ -18,7 +18,7 @@ const getRawMarkdownNotes = async (filepath) => {
 };
 
 const splitRawNotesToCards = (rawNotes) => {
-    const cardRegex = /-\s.*\n(\s{4}-\s.*)+\s*/gm
+    const cardRegex = /-\s.*\n(\s{4}-\s.*$\n)+/gm
     const cardsArray = rawNotes.match(cardRegex);
 
     return cardsArray;
@@ -75,7 +75,7 @@ const createBasicFields = (question, answers) => {
 
 const createClozeFields = (question, answers) => {
     return {
-        Text: `**${question}**\n${answers.map(bullet => `- ${bullet}`).join('\n')}`
+        Text: `**${question}**\n${answers.filter(bullet => bullet != '').map(bullet => `- ${bullet}`).join('\n')}`
     };
 };
 
