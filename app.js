@@ -18,7 +18,7 @@ const getRawMarkdownNotes = async (filepath) => {
 };
 
 const splitRawNotesToCards = (rawNotes) => {
-    const cardRegex = /-\s.*\n(\s{4}-\s.*$\n)+/gm
+    const cardRegex = /-\s.*\n(\s{4}-\s.*$\n)*/gm
     const cardsArray = rawNotes.match(cardRegex);
 
     return cardsArray;
@@ -64,6 +64,7 @@ const parseRawNotesIntoPages = (rawNotes) => {
         }
     }
     if (parsedNotesPages.length == 0 && parsedNotes) parsedNotesPages.push(parsedNotes);
+    if (parsedNotes.length > 0) parsedNotesPages.push(parsedNotes);
 
     return parsedNotesPages;
 }
